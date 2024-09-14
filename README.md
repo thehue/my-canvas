@@ -34,3 +34,9 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## 중요 내용 한줄 정리
+### 1.1.1 <canvas> 요소의 크기와 드로잉 표면 [커밋: d2bd019a](https://github.com/thehue/my-canvas/commit/d2bd019a98dfd75ecbe0d5c38578a9acea4b401a)
+<img width="492" alt="image" src="https://github.com/user-attachments/assets/cd4c105b-e828-4448-bbc7-a7429368afd3">
+
+
