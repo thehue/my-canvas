@@ -14,8 +14,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Canvas element size: 600 x 300",
-  description: "Canvas drawing surface size 300 x 150",
+  title: "rotation",
+  description: "Canvas drawing rotation",
 };
 
 export default function RootLayout({
