@@ -8,6 +8,7 @@ export default function Home() {
   const [mouseDown, setMouseDown] = useState({ x: 0, y: 0 });
   const [drawingSurfaceImageData, setDrawingSurfaceImageData] =
     useState<ImageData>();
+  const [isEditing, setIsEditing] = useState(false);
 
   const windowToCanvas = (
     windowX: number,
@@ -65,7 +66,7 @@ export default function Home() {
     const canvas = e.target as HTMLCanvasElement;
     const context = canvas.getContext("2d")!;
 
-    if (isDragging) {
+    if (isDragging && isEditing) {
       const { x, y } = windowToCanvas(
         e.clientX,
         e.clientY,
@@ -127,18 +128,45 @@ export default function Home() {
   }, []);
 
   return (
-    <Canvas
-      ref={canvasRef}
-      width={800}
-      height={600}
-      onMouseDown={onMouseDown}
-      onMouseUp={onMouseUp}
-      onMouseMove={onMouseMove}
-    >
-      Canvas not supported in the browser.
-    </Canvas>
+    <Editor>
+      <Tool>
+        <Label htmlFor={"edit"}>Edit</Label>
+        <input
+          type={"checkbox"}
+          id={"edit"}
+          checked={isEditing}
+          defaultChecked={false}
+          onChange={() => setIsEditing(!isEditing)}
+        />
+      </Tool>
+      <Canvas
+        ref={canvasRef}
+        width={800}
+        height={600}
+        onMouseDown={onMouseDown}
+        onMouseUp={onMouseUp}
+        onMouseMove={onMouseMove}
+      >
+        Canvas not supported in the browser.
+      </Canvas>
+    </Editor>
   );
 }
+
+const Editor = styled.div`
+  position: relative;
+  width: 100%;
+`;
+
+const Tool = styled.div`
+  position: absolute;
+  top: 20px;
+  left: 20px;
+`;
+
+const Label = styled.label`
+  margin-right: 5px;
+`;
 
 const Canvas = styled.canvas`
   background: #ffffff;
