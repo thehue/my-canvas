@@ -26,6 +26,7 @@ export default function Home() {
     x: number;
     y: number;
   }>(null);
+  const [activeRect, setActiveRect] = useState<Rect | null>(null);
 
   const windowToCanvas = (
     windowX: number,
@@ -81,6 +82,7 @@ export default function Home() {
     if (isEditing) {
       rects.forEach((rect) => {
         if (isPointInRect(x, y, rect)) {
+          // dragging 비율 계산
           const draggingOffsetX = x - rect.x;
           const draggingOffsetY = y - rect.y;
           setDraggingOffset({
@@ -122,7 +124,12 @@ export default function Home() {
 
       const draggingRect = rects[draggingRectIndex];
       if (!draggingOffset) return;
-      if (!draggingRect) return;
+      if (!draggingRect) {
+        setActiveRect(null);
+        return;
+      }
+
+      setActiveRect(draggingRect);
 
       const startX = x - draggingOffset.x;
       const startY = y - draggingOffset.y;
@@ -163,7 +170,7 @@ export default function Home() {
   };
 
   const onMouseUp = (): void => {
-    if (isDragging && !isEditing) {
+    if (!isEditing) {
       if (
         rect &&
         rects.findIndex((savedRect) => savedRect.id === rect.id) < 0
@@ -171,6 +178,7 @@ export default function Home() {
         setRects([...rects, rect]);
       }
     }
+
     setIsDragging(false);
   };
 
@@ -202,6 +210,17 @@ export default function Home() {
 
     context.restore();
   };
+
+  const menuItemList = [
+    {
+      label: "+90° Clockwise",
+      onClick: () => {},
+    },
+    {
+      label: "-90° Clockwise",
+      onClick: () => {},
+    },
+  ];
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -238,6 +257,18 @@ export default function Home() {
       >
         Canvas not supported in the browser.
       </Canvas>
+      {activeRect && (
+        <SubToolBar $x={activeRect.x} $y={activeRect.y}>
+          <SubToolBarInner>
+            <OptionButton>•••</OptionButton>
+            <RotationOptions>
+              {menuItemList.map((item) => (
+                <Option key={item.label}>{item.label}</Option>
+              ))}
+            </RotationOptions>
+          </SubToolBarInner>
+        </SubToolBar>
+      )}
     </Editor>
   );
 }
@@ -263,4 +294,59 @@ const Canvas = styled.canvas<{ $cursor: string }>`
   margin-top: 10px;
   box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.5);
   cursor: ${({ $cursor }) => $cursor};
+`;
+
+const SubToolBar = styled.div<{
+  $x: number;
+  $y: number;
+}>`
+  position: absolute;
+  top: -20px;
+  left: 10px;
+  background-color: rgba(255, 255, 255, 0.7);
+  box-shadow: 1px 1px 5px darkgray;
+  display: flex;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  border-radius: 4px;
+  width: 30px;
+  height: 20px;
+  transform: ${({ $x, $y }) => `translate(${$x}px, ${$y}px)`};
+`;
+
+const SubToolBarInner = styled.div`
+  position: relative;
+`;
+
+const OptionButton = styled.button`
+  background: none;
+  border: none;
+  &:hover {
+    color: dodgerblue;
+    cursor: pointer;
+  }
+`;
+
+const RotationOptions = styled.ul`
+  width: 100px;
+  background: #ffffff;
+  box-shadow: 1px 1px 5px darkgray;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  padding: 10px 0 0;
+  border-radius: 4px;
+  position: absolute;
+  top: 26px;
+`;
+
+const Option = styled.li`
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 10px;
+  cursor: pointer;
+  &:hover {
+    color: dodgerblue;
+  }
 `;
