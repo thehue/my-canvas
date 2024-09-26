@@ -2,6 +2,14 @@
 import styled from "styled-components";
 import { MouseEvent, useEffect, useRef, useState } from "react";
 
+interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  id: number;
+}
+
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -9,6 +17,15 @@ export default function Home() {
   const [drawingSurfaceImageData, setDrawingSurfaceImageData] =
     useState<ImageData>();
   const [isEditing, setIsEditing] = useState(false);
+  const [rect, setRect] = useState<Rect | null>(null);
+  const [rects, setRects] = useState<Rect[]>([]);
+  const [cursor, setCursor] = useState<string>(
+    !isEditing ? "crosshair" : "default",
+  );
+  const [draggingOffset, setDraggingOffset] = useState<null | {
+    x: number;
+    y: number;
+  }>(null);
 
   const windowToCanvas = (
     windowX: number,
@@ -45,47 +62,115 @@ export default function Home() {
   };
 
   const onMouseDown = (e: MouseEvent<HTMLCanvasElement>): void => {
-    const location = windowToCanvas(
+    const { x, y } = windowToCanvas(
       e.clientX,
       e.clientY,
       e.target as HTMLCanvasElement,
     );
 
-    e.preventDefault(); // prevent cursor change
+    e.preventDefault(); // 커서 변경 방지
 
     saveDrawingSurface();
 
     setMouseDown({
-      x: location.x,
-      y: location.y,
+      x,
+      y,
     });
     setIsDragging(true);
+
+    if (isEditing) {
+      rects.forEach((rect) => {
+        if (isPointInRect(x, y, rect)) {
+          const draggingOffsetX = x - rect.x;
+          const draggingOffsetY = y - rect.y;
+          setDraggingOffset({
+            x: draggingOffsetX,
+            y: draggingOffsetY,
+          });
+        }
+      });
+    }
+  };
+
+  const isPointInRect = (px: number, py: number, rect: Rect): boolean => {
+    const { x, y, width, height } = rect;
+    return px >= x && px <= x + width && py >= y && py <= y + height;
   };
 
   const onMouseMove = (e: MouseEvent<HTMLCanvasElement>): void => {
     const canvas = e.target as HTMLCanvasElement;
     const context = canvas.getContext("2d")!;
 
+    const { x, y } = windowToCanvas(
+      e.clientX,
+      e.clientY,
+      e.target as HTMLCanvasElement,
+    );
+
+    if (isEditing) {
+      const hoverRect = rects.some((rect) => isPointInRect(x, y, rect));
+      setCursor(hoverRect ? "pointer" : "default");
+    }
+
     if (isDragging && isEditing) {
-      const { x, y } = windowToCanvas(
-        e.clientX,
-        e.clientY,
-        e.target as HTMLCanvasElement,
+      // 나중에 생성된 rect일 수록 위에 쌓여진 사각형이므로 그 사각형을 드래깅 해준다
+      const draggingRectIndex = Math.max(
+        ...rects
+          .filter((rect) => isPointInRect(x, y, rect))
+          .map((rect) => rect.id),
       );
 
+      const draggingRect = rects[draggingRectIndex];
+      if (!draggingOffset) return;
+      if (!draggingRect) return;
+
+      const startX = x - draggingOffset.x;
+      const startY = y - draggingOffset.y;
+
+      context.strokeRect(
+        startX,
+        startY,
+        draggingRect.width,
+        draggingRect.height,
+      );
+
+      rects.splice(draggingRectIndex, 1, {
+        ...draggingRect,
+        x: startX,
+        y: startY,
+      });
+
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      drawGrid(context);
+      rects.forEach((rect) => {
+        context.strokeRect(rect.x, rect.y, rect.width, rect.height);
+      });
+    }
+
+    if (isDragging && !isEditing) {
       restoreDrawingSurface();
 
       const width = Math.abs(x - mouseDown.x);
       const height = Math.abs(y - mouseDown.y);
+      if (width >= 10 && height >= 10) {
+        const startX = Math.min(x, mouseDown.x);
+        const startY = Math.min(y, mouseDown.y);
 
-      const startX = Math.min(x, mouseDown.x);
-      const startY = Math.min(y, mouseDown.y);
-
-      context.strokeRect(startX, startY, width, height);
+        context.strokeRect(startX, startY, width, height);
+        setRect({ x: startX, y: startY, width, height, id: rects.length });
+      }
     }
   };
 
   const onMouseUp = (): void => {
+    if (isDragging && !isEditing) {
+      if (
+        rect &&
+        rects.findIndex((savedRect) => savedRect.id === rect.id) < 0
+      ) {
+        setRects([...rects, rect]);
+      }
+    }
     setIsDragging(false);
   };
 
@@ -127,6 +212,10 @@ export default function Home() {
     drawGrid(context);
   }, []);
 
+  useEffect(() => {
+    console.log(rects);
+  }, [rects]);
+
   return (
     <Editor>
       <Tool>
@@ -135,7 +224,6 @@ export default function Home() {
           type={"checkbox"}
           id={"edit"}
           checked={isEditing}
-          defaultChecked={false}
           onChange={() => setIsEditing(!isEditing)}
         />
       </Tool>
@@ -146,6 +234,7 @@ export default function Home() {
         onMouseDown={onMouseDown}
         onMouseUp={onMouseUp}
         onMouseMove={onMouseMove}
+        $cursor={cursor}
       >
         Canvas not supported in the browser.
       </Canvas>
@@ -168,10 +257,10 @@ const Label = styled.label`
   margin-right: 5px;
 `;
 
-const Canvas = styled.canvas`
+const Canvas = styled.canvas<{ $cursor: string }>`
   background: #ffffff;
-  cursor: pointer;
   margin-left: 10px;
   margin-top: 10px;
   box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.5);
+  cursor: ${({ $cursor }) => $cursor};
 `;
