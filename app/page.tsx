@@ -1,14 +1,13 @@
 "use client";
 import styled from "styled-components";
 import { MouseEvent, useEffect, useRef, useState } from "react";
-
-interface Rect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  id: number;
-}
+import { Point, Rect, RectPoint } from "@/app/src/types";
+import {
+  degreeToRadian,
+  getBoundingRectVertices,
+  getCenterOfBoundingRect,
+  getRotatedBoundingRectVertices,
+} from "@/app/src/utils";
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -80,6 +79,19 @@ export default function Home() {
     setIsDragging(true);
 
     if (isEditing) {
+      const draggingRectIndex = Math.max(
+        ...rects
+          .filter((rect) => isPointInRect(x, y, rect))
+          .map((rect) => rect.id),
+      );
+
+      const draggingRect = rects[draggingRectIndex];
+      if (draggingRect) {
+        setActiveRect(draggingRect);
+      } else {
+        setActiveRect(null);
+      }
+
       rects.forEach((rect) => {
         if (isPointInRect(x, y, rect)) {
           // dragging 비율 계산
@@ -124,22 +136,9 @@ export default function Home() {
 
       const draggingRect = rects[draggingRectIndex];
       if (!draggingOffset) return;
-      if (!draggingRect) {
-        setActiveRect(null);
-        return;
-      }
-
-      setActiveRect(draggingRect);
 
       const startX = x - draggingOffset.x;
       const startY = y - draggingOffset.y;
-
-      context.strokeRect(
-        startX,
-        startY,
-        draggingRect.width,
-        draggingRect.height,
-      );
 
       rects.splice(draggingRectIndex, 1, {
         ...draggingRect,
@@ -148,7 +147,7 @@ export default function Home() {
       });
 
       context.clearRect(0, 0, canvas.width, canvas.height);
-      drawGrid(context);
+      // drawGrid(context);
       rects.forEach((rect) => {
         context.strokeRect(rect.x, rect.y, rect.width, rect.height);
       });
@@ -164,7 +163,14 @@ export default function Home() {
         const startY = Math.min(y, mouseDown.y);
 
         context.strokeRect(startX, startY, width, height);
-        setRect({ x: startX, y: startY, width, height, id: rects.length });
+        setRect({
+          x: startX,
+          y: startY,
+          width,
+          height,
+          id: rects.length,
+          degree: 0,
+        });
       }
     }
   };
@@ -178,7 +184,6 @@ export default function Home() {
         setRects([...rects, rect]);
       }
     }
-
     setIsDragging(false);
   };
 
@@ -214,7 +219,22 @@ export default function Home() {
   const menuItemList = [
     {
       label: "+90° Clockwise",
-      onClick: () => {},
+      onClick: () => {
+        if (!activeRect) return;
+        const canvas = canvasRef.current!;
+        const context = canvas.getContext("2d")!;
+        const index = rects.findIndex((rect) => rect.id === activeRect.id);
+        console.log(index);
+
+        if (index >= 0) {
+          context.clearRect(0, 0, canvas.width, canvas.height);
+          rects.splice(index, 1, {
+            ...rects[index],
+            degree: normalizeDegree(rects[index].degree + 90),
+          });
+          paintRects({ rects, context });
+        }
+      },
     },
     {
       label: "-90° Clockwise",
@@ -222,13 +242,55 @@ export default function Home() {
     },
   ];
 
+  const paintRects = ({
+    rects,
+    context,
+  }: {
+    rects: Rect[];
+    context: CanvasRenderingContext2D;
+  }) => {
+    rects.forEach((rect) => {
+      drawRect({ context, rect });
+    });
+  };
+
+  const drawRect = ({
+    context,
+    rect,
+  }: {
+    context: CanvasRenderingContext2D;
+    rect: Rect;
+  }): void => {
+    const { x, y, width, height, degree } = rect;
+
+    // 현재 캔버스 context를 저장
+    context.save();
+
+    // 사각형의 중점을 구하기
+    const vertices = getBoundingRectVertices(rect);
+    const center = getCenterOfBoundingRect(vertices);
+
+    // 캔버스의 원점을 사각형의 중점으로 변경
+    context.translate(center.x, center.y);
+    context.rotate(degreeToRadian(degree));
+
+    // 다시 원래 위치로 이동
+    context.translate(-center.x, -center.y);
+    context.strokeRect(x, y, width, height);
+    context.restore();
+  };
+
+  const normalizeDegree = (degree: number): number => {
+    return degree % 360;
+  };
+
   useEffect(() => {
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
 
     if (!context) return;
 
-    drawGrid(context);
+    // drawGrid(context);
   }, []);
 
   useEffect(() => {
@@ -263,7 +325,9 @@ export default function Home() {
             <OptionButton>•••</OptionButton>
             <RotationOptions>
               {menuItemList.map((item) => (
-                <Option key={item.label}>{item.label}</Option>
+                <Option key={item.label} onClick={item.onClick}>
+                  {item.label}
+                </Option>
               ))}
             </RotationOptions>
           </SubToolBarInner>
