@@ -9,7 +9,6 @@ export interface Rect {
   width: number;
   height: number;
   id: number;
-  degree: number;
 }
 
 export interface RectPoint {
@@ -17,4 +16,8 @@ export interface RectPoint {
   topRight: Point;
   bottomLeft: Point;
   bottomRight: Point;
+}
+
+export interface ImageObject extends Rect {
+  degree: number;
 }

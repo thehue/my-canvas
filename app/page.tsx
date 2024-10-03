@@ -352,7 +352,7 @@ const Label = styled.label`
   margin-right: 5px;
 `;
 
-const Canvas = styled.canvas<{ $cursor: string }>`
+export const Canvas = styled.canvas<{ $cursor?: string }>`
   background: #ffffff;
   margin-left: 10px;
   margin-top: 10px;
